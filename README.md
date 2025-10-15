@@ -1,6 +1,6 @@
 # 7×7 Token Board Game
 
-An interactive browser-based game where you play against an AI opponent using optimal game theory strategy.
+Browser-based game where you play against an AI opponent using optimal game theory strategy.
 
 ## Game Rules
 

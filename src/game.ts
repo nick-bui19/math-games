@@ -90,15 +90,16 @@ export class TokenGame {
             to: newPosition
         });
 
-        // Check if game is over (no moves available)
+        // Switch player first
+        this.state.currentPlayer = this.state.currentPlayer === 'human' ? 'computer' : 'human';
+
+        // Check if the NEW current player has any moves available
         const availableMoves = this.getAvailableMoves();
         if (availableMoves.length === 0) {
             this.state.gameOver = true;
-            // Current player cannot move, so they lose
+            // Current player (who just switched) cannot move, so they lose
+            // Winner is the player who just made the move (previous player)
             this.state.winner = this.state.currentPlayer === 'human' ? 'computer' : 'human';
-        } else {
-            // Switch player
-            this.state.currentPlayer = this.state.currentPlayer === 'human' ? 'computer' : 'human';
         }
 
         return true;
