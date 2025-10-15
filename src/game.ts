@@ -122,8 +122,8 @@ export class TokenGame {
      * Computer plays optimal strategy:
      * Goal: Put opponent in losing positions (P-positions)
      * Strategy:
-     * 1. Within rows: Use 3-k mirroring to force opponent to columns {1, 4, 7}
-     * 2. Between rows: Try to force opponent to (row, 1) on odd rows
+     * 1. From even rows (2,4,6) at column 7: Move up to put opponent at odd row column 1
+     * 2. Within rows: Use 3-k mirroring to force opponent to columns {1, 4, 7}
      * 3. In row 7: Force opponent to columns {1, 4, 7}
      */
     getOptimalComputerMove(): MoveType | null {
@@ -133,8 +133,9 @@ export class TokenGame {
         const { row, col } = this.state.position;
         const lastMove = this.state.moveHistory[this.state.moveHistory.length - 1];
 
-        // SPECIAL CASE: Row 6 - immediately move up to put opponent at (7,1) losing position
-        if (row === 6 && col === 7 && availableMoves.includes('up')) {
+        // CRITICAL: If on even rows (2, 4, 6) at column 7, immediately move up
+        // This puts opponent at losing positions: (3,1), (5,1), (7,1)
+        if (row % 2 === 0 && col === 7 && availableMoves.includes('up')) {
             return 'up';
         }
 
@@ -211,7 +212,13 @@ export class TokenGame {
             if (remaining >= 1 && availableMoves.includes('right1')) return 'right1';
         }
 
-        // Fallback
+        // Fallback with randomization when both moves are available
+        const rightMoves = availableMoves.filter(m => m === 'right1' || m === 'right2');
+        if (rightMoves.length > 1) {
+            // Randomly choose between right1 and right2
+            return Math.random() < 0.5 ? 'right1' : 'right2';
+        }
+
         if (availableMoves.includes('right2')) return 'right2';
         if (availableMoves.includes('right1')) return 'right1';
         if (availableMoves.includes('up')) return 'up';
