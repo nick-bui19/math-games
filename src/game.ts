@@ -106,10 +106,25 @@ export class TokenGame {
     }
 
     /**
+     * Check if a position is a losing position (P-position)
+     * P-positions: (1,1), (3,1), (5,1), (7,1), (7,4), (7,7)
+     * Pattern: First column of odd rows, and columns {1,4,7} of row 7
+     */
+    private isLosingPosition(row: number, col: number): boolean {
+        // First column of odd rows: (1,1), (3,1), (5,1), (7,1)
+        if (col === 1 && row % 2 === 1) return true;
+        // Row 7 special columns: (7,4), (7,7)
+        if (row === 7 && (col === 4 || col === 7)) return true;
+        return false;
+    }
+
+    /**
      * Computer plays optimal strategy:
-     * - Force opponent to be first mover at each new row
-     * - When opponent moves right by k, respond with (3-k) if possible
-     * - This ensures opponent is always forced to start rows at column 1
+     * Goal: Put opponent in losing positions (P-positions)
+     * Strategy:
+     * 1. Within rows: Use 3-k mirroring to force opponent to columns {1, 4, 7}
+     * 2. Between rows: Try to force opponent to (row, 1) on odd rows
+     * 3. In row 7: Force opponent to columns {1, 4, 7}
      */
     getOptimalComputerMove(): MoveType | null {
         const availableMoves = this.getAvailableMoves();
@@ -118,68 +133,85 @@ export class TokenGame {
         const { row, col } = this.state.position;
         const lastMove = this.state.moveHistory[this.state.moveHistory.length - 1];
 
-        // Strategy: Maintain control by ensuring total rightward moves = 3 before moving up
-        // Key insight: columns 1->4 or 4->7 require 3 moves right total
-        // After opponent moves, we complete to make total = 3, then move up
-
-        // Calculate position in current row cycle (positions 1-3 or 4-6, with 7 being end)
-        const colMod = col <= 3 ? col : col <= 6 ? col - 3 : col - 6;
-
-        // If we're at column 1, 4, or 7 (start of a segment or end)
-        if (col === 1 || col === 4 || col === 7) {
-            // At column 7, must move up
-            if (col === 7) {
-                if (availableMoves.includes('up')) {
-                    return 'up';
-                }
-            }
-
-            // At column 1 or 4 (start of segment), move to maintain control
-            // If computer is first player, move right by 1 to start the pattern
-            if (this.state.firstPlayer === 'computer') {
-                if (availableMoves.includes('right1')) return 'right1';
-            } else {
-                // If human is first player, we should mirror their last move
-                if (lastMove && lastMove.player === 'human') {
-                    if (lastMove.move === 'right1' && availableMoves.includes('right2')) {
-                        return 'right2';
-                    }
-                    if (lastMove.move === 'right2' && availableMoves.includes('right1')) {
-                        return 'right1';
-                    }
-                }
-                // Default: move right 1
-                if (availableMoves.includes('right1')) return 'right1';
-            }
+        // SPECIAL CASE: Row 6 - immediately move up to put opponent at (7,1) losing position
+        if (row === 6 && col === 7 && availableMoves.includes('up')) {
+            return 'up';
         }
 
-        // Mirror opponent's last move to complete to 3
-        if (lastMove && lastMove.player === 'human') {
-            // If human moved right by 1, we move right by 2
-            if (lastMove.move === 'right1' && availableMoves.includes('right2')) {
-                return 'right2';
-            }
-            // If human moved right by 2, we move right by 1
-            if (lastMove.move === 'right2' && availableMoves.includes('right1')) {
+        // SPECIAL CASE: Row 7 endgame
+        if (row === 7) {
+            // At (7,3): Move right 1 to reach (7,4), forcing opponent into losing position
+            if (col === 3 && availableMoves.includes('right1')) {
                 return 'right1';
             }
-            // If human moved up, we should also move up if we're at column 4 or 7
-            if (lastMove.move === 'up') {
-                // We're now at column 1, start the pattern
+            // At (7,6): Move right 1 to reach (7,7), opponent cannot move
+            if (col === 6 && availableMoves.includes('right1')) {
+                return 'right1';
+            }
+            // At (7,5): Move right 2 to reach (7,7), opponent cannot move
+            if (col === 5 && availableMoves.includes('right2')) {
+                return 'right2';
+            }
+            // At (7,2): Move right 2 to reach (7,4), forcing opponent into losing position
+            if (col === 2 && availableMoves.includes('right2')) {
+                return 'right2';
+            }
+            // At (7,1) or (7,4): We're in a losing position, make best available move
+            if (availableMoves.includes('right1')) return 'right1';
+            if (availableMoves.includes('right2')) return 'right2';
+        }
+
+        // CORE STRATEGY: 3-k mirroring within rows
+        // Segments: 1→4 (3 steps), 4→7 (3 steps)
+
+        // If at column 1 or 4 (start of segment)
+        if (col === 1 || col === 4) {
+            // If we're at an odd row, column 1 (losing position), move away
+            if (this.isLosingPosition(row, col)) {
+                // Make a move to avoid staying in losing position
                 if (availableMoves.includes('right1')) return 'right1';
+            }
+
+            // If human just moved up, they're at (row, 1)
+            if (lastMove && lastMove.move === 'up') {
+                // We want to mirror and force them back to next losing position
+                if (availableMoves.includes('right1')) return 'right1';
+            }
+
+            // Otherwise start the segment with right 1
+            if (availableMoves.includes('right1')) return 'right1';
+        }
+
+        // If at column 7, move up to next row
+        if (col === 7) {
+            if (availableMoves.includes('up')) return 'up';
+        }
+
+        // MIRRORING STRATEGY: If human just moved right by k, move 3-k
+        if (lastMove && lastMove.player === 'human') {
+            if (lastMove.move === 'right1' && availableMoves.includes('right2')) {
+                // Human moved 1, we move 2 (total = 3)
+                return 'right2';
+            }
+            if (lastMove.move === 'right2' && availableMoves.includes('right1')) {
+                // Human moved 2, we move 1 (total = 3)
+                return 'right1';
             }
         }
 
-        // Default: complete the segment
-        const remaining = 3 - (this.rowMoveCount % 3);
-        if (remaining === 1 && availableMoves.includes('right1')) {
-            return 'right1';
-        }
-        if (remaining === 2 && availableMoves.includes('right2')) {
-            return 'right2';
+        // Default behavior: complete to reach next key column {1, 4, 7}
+        // Calculate distance to next key column
+        if (col < 4) {
+            const remaining = 4 - col;
+            if (remaining === 2 && availableMoves.includes('right2')) return 'right2';
+            if (remaining >= 1 && availableMoves.includes('right1')) return 'right1';
+        } else if (col < 7) {
+            const remaining = 7 - col;
+            if (remaining === 2 && availableMoves.includes('right2')) return 'right2';
+            if (remaining >= 1 && availableMoves.includes('right1')) return 'right1';
         }
 
-        // Fallback: prefer right2, then right1, then up
+        // Fallback
         if (availableMoves.includes('right2')) return 'right2';
         if (availableMoves.includes('right1')) return 'right1';
         if (availableMoves.includes('up')) return 'up';
