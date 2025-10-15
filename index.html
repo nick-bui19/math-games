@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>7×7 Token Board Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'pine': {
+                            DEFAULT: '#01796F',
+                            50: '#E6F7F6',
+                            100: '#B3E7E4',
+                            200: '#80D7D1',
+                            300: '#4DC7BF',
+                            400: '#1AB7AC',
+                            500: '#01796F',
+                            600: '#016159',
+                            700: '#014943',
+                            800: '#00312D',
+                            900: '#001917',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-pine-50 to-white min-h-screen">
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
