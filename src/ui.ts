@@ -119,6 +119,13 @@ export class GameUI {
             this.renderStartScreen();
         });
 
+        // Add event listener for Play Again button (game over state)
+        if (state.gameOver) {
+            document.getElementById('play-again')?.addEventListener('click', () => {
+                this.renderStartScreen();
+            });
+        }
+
         // Add event listeners for move buttons
         if (!state.gameOver && state.currentPlayer === 'human') {
             availableMoves.forEach(move => {

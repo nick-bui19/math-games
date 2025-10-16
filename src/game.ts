@@ -133,9 +133,9 @@ export class TokenGame {
         const { row, col } = this.state.position;
         const lastMove = this.state.moveHistory[this.state.moveHistory.length - 1];
 
-        // CRITICAL: If on even rows (2, 4, 6) at column 7, immediately move up
+        // CRITICAL: If on even rows (2, 4, 6) at ANY column, immediately move up
         // This puts opponent at losing positions: (3,1), (5,1), (7,1)
-        if (row % 2 === 0 && col === 7 && availableMoves.includes('up')) {
+        if (row % 2 === 0 && availableMoves.includes('up')) {
             return 'up';
         }
 
@@ -158,29 +158,39 @@ export class TokenGame {
                 return 'right2';
             }
             // At (7,1) or (7,4): We're in a losing position, make best available move
+            // Randomize to make it less predictable
+            const rightMoves = availableMoves.filter(m => m === 'right1' || m === 'right2');
+            if (rightMoves.length > 1) {
+                return Math.random() < 0.5 ? 'right1' : 'right2';
+            }
             if (availableMoves.includes('right1')) return 'right1';
             if (availableMoves.includes('right2')) return 'right2';
         }
 
         // CORE STRATEGY: 3-k mirroring within rows
         // Segments: 1→4 (3 steps), 4→7 (3 steps)
+        // Goal: Force opponent to land on columns 4 or 7
 
         // If at column 1 or 4 (start of segment)
         if (col === 1 || col === 4) {
-            // If we're at an odd row, column 1 (losing position), move away
+            // If we're at an odd row, column 1 (losing position), we need to move
+            // Randomize the first move to make it unpredictable
             if (this.isLosingPosition(row, col)) {
-                // Make a move to avoid staying in losing position
+                const rightMoves = availableMoves.filter(m => m === 'right1' || m === 'right2');
+                if (rightMoves.length > 1) {
+                    return Math.random() < 0.5 ? 'right1' : 'right2';
+                }
                 if (availableMoves.includes('right1')) return 'right1';
+                if (availableMoves.includes('right2')) return 'right2';
             }
 
-            // If human just moved up, they're at (row, 1)
-            if (lastMove && lastMove.move === 'up') {
-                // We want to mirror and force them back to next losing position
-                if (availableMoves.includes('right1')) return 'right1';
+            // At column 4 (not a losing position), randomize to start the segment
+            const rightMoves = availableMoves.filter(m => m === 'right1' || m === 'right2');
+            if (rightMoves.length > 1) {
+                return Math.random() < 0.5 ? 'right1' : 'right2';
             }
-
-            // Otherwise start the segment with right 1
             if (availableMoves.includes('right1')) return 'right1';
+            if (availableMoves.includes('right2')) return 'right2';
         }
 
         // If at column 7, move up to next row
@@ -189,27 +199,42 @@ export class TokenGame {
         }
 
         // MIRRORING STRATEGY: If human just moved right by k, move 3-k
+        // BUT only if it doesn't overshoot our target column (4 or 7)
         if (lastMove && lastMove.player === 'human') {
+            const targetCol = col < 4 ? 4 : 7;
+
             if (lastMove.move === 'right1' && availableMoves.includes('right2')) {
-                // Human moved 1, we move 2 (total = 3)
-                return 'right2';
+                // Human moved 1, we want to move 2 (total = 3)
+                // Check if moving 2 would overshoot or hit the target
+                if (col + 2 <= targetCol) {
+                    return 'right2';
+                } else if (col + 1 === targetCol) {
+                    // Moving 2 would overshoot, move 1 to hit target exactly
+                    return 'right1';
+                }
             }
             if (lastMove.move === 'right2' && availableMoves.includes('right1')) {
-                // Human moved 2, we move 1 (total = 3)
-                return 'right1';
+                // Human moved 2, we want to move 1 (total = 3)
+                if (col + 1 <= targetCol) {
+                    return 'right1';
+                }
             }
         }
 
-        // Default behavior: complete to reach next key column {1, 4, 7}
+        // Default behavior: complete to reach next key column {4, 7}
         // Calculate distance to next key column
         if (col < 4) {
             const remaining = 4 - col;
             if (remaining === 2 && availableMoves.includes('right2')) return 'right2';
-            if (remaining >= 1 && availableMoves.includes('right1')) return 'right1';
+            if (remaining === 1 && availableMoves.includes('right1')) return 'right1';
+            // If remaining > 2, we shouldn't be here, but handle it
+            if (availableMoves.includes('right1')) return 'right1';
         } else if (col < 7) {
             const remaining = 7 - col;
             if (remaining === 2 && availableMoves.includes('right2')) return 'right2';
-            if (remaining >= 1 && availableMoves.includes('right1')) return 'right1';
+            if (remaining === 1 && availableMoves.includes('right1')) return 'right1';
+            // If remaining > 2, we shouldn't be here, but handle it
+            if (availableMoves.includes('right1')) return 'right1';
         }
 
         // Fallback with randomization when both moves are available
